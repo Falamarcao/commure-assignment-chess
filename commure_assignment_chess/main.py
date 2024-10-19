@@ -50,9 +50,7 @@ class Assignment:
         return usernames
 
     def rating_history_chess_player(self, username: str, complete_date: bool = False):
-        rating_history = self.lichess.get_rating_history_of_a_user(
-            username=player["username"]
-        )
+        rating_history = self.lichess.get_rating_history_of_a_user(username=username)
 
         data = dict()
         for game in rating_history:
@@ -111,7 +109,7 @@ class Assignment:
             )
 
         # Extract the first user's dates (since they are the same and in order)
-        dates = list(data[0]["igormezentsev"].keys())
+        dates = list(data[0][list(data[0].keys())[0]].keys())
 
         # Prepare the data for CSV
         csv_data = []
@@ -120,7 +118,7 @@ class Assignment:
             for username, values in entry.items():
                 row = [username]  # Start the row with the username
                 row.extend(
-                    [values[date] for date in dates]
+                    [values.get(date, 'N/A') for date in dates]
                 )  # Add the values in date order
                 csv_data.append(row)
 
