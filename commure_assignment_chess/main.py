@@ -143,7 +143,7 @@ if __name__ == "__main__":
         "users"
     ][0]
 
-    print(
+    print(f'- {player["username"]}, ', 
         json_dumps(
             assignment.rating_history_chess_player(username=player["username"]),
             indent=4,
