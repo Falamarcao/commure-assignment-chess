@@ -95,8 +95,10 @@ class Assignment:
             for date, value in df["Value"].to_dict().items()
         }
 
-    def rating_history_50_players_30_days_to_csv(self):
-        players = self.lichess.get_one_leaderboard(nb=2, perfType="classical")["users"]
+    def rating_history_n_players_30_days_to_csv(self, number_of_players: int):
+        players = self.lichess.get_one_leaderboard(
+            nb=number_of_players, perfType="classical"
+        )["users"]
 
         data = []
         for player in players:
@@ -123,7 +125,7 @@ class Assignment:
                 csv_data.append(row)
 
         # Define the CSV file path
-        csv_file_path = "rating_history_50_players_30_days.csv"
+        csv_file_path = f"rating_history_{number_of_players}_players_30_days.csv"
 
         # Write to CSV
         with open(csv_file_path, mode="w", newline="") as file:
@@ -150,4 +152,4 @@ if __name__ == "__main__":
         )
     )
 
-    assignment.rating_history_50_players_30_days_to_csv()
+    assignment.rating_history_n_players_30_days_to_csv(number_of_players=50)
