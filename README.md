@@ -11,3 +11,8 @@
 ```sh
     poetry run python -m unittest discover
 ```
+
+## Run Project
+```sh
+    poetry run ./commure_assignment_chess/main.py
+```
