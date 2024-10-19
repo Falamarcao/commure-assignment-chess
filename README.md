@@ -19,3 +19,7 @@
 ```sh
     poetry run ./commure_assignment_chess/main.py
 ```
+
+## Project Output
+
+[Open CSV File](./rating_history_50_players_30_days.csv)
