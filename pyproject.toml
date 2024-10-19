@@ -2,7 +2,7 @@
 name = "commure-assignment-chess"
 version = "0.1.0"
 description = ""
-authors = ["falamarcao <falamarcao@gmail.com>"]
+authors = ["falamarcao"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
