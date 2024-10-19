@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
+import csv
+from datetime import datetime, timedelta
 from json import dumps as json_dumps
 
-from datetime import datetime, timedelta
+import pandas as pd
 
 from commure_assignment_chess.lichess import Lichess
 
@@ -47,25 +49,85 @@ class Assignment:
 
         return usernames
 
-    def rating_history_top_chess_player(self):
-        player = self.lichess.get_one_leaderboard(nb=1, perfType="classical")["users"][0]
-
+    def rating_history_chess_player(self, username: str):
         rating_history = self.lichess.get_rating_history_of_a_user(
             username=player["username"]
         )
 
-        results = dict()
+        data = dict()
         for game in rating_history:
             if game["name"] == "Classical":
                 for record in reversed(game["points"]):
                     if self.is_within_last_30_days(
                         datetime(record[0], record[1] + 1, record[2])
                     ):
-                        results.update({f"{self.months[record[1]]} {record[2]}": record[3]})
+                        data.update(
+                            {f"{self.months[record[1]]} {record[2]}": record[3]}
+                        )
                     else:
                         break
 
-        return results
+        # Convert the dictionary to a DataFrame
+        df = pd.DataFrame(list(data.items()), columns=["Date", "Value"])
+
+        # Convert 'Date' to datetime format
+        df["Date"] = pd.to_datetime(df["Date"], format="%b %d")
+
+        # Set the 'Date' as index
+        df.set_index("Date", inplace=True)
+
+        # Reindex to include all dates in the last 30 days
+        date_range = pd.date_range(end=df.index.max(), periods=30)
+        df = df.reindex(date_range)
+
+        # Fill missing values with the last available date's value
+        df["Value"] = (
+            df["Value"].ffill().bfill()
+        )  # Use ffill and bfill directly on the Series
+
+        # Convert the index (Timestamps) back to strings for dict compatibility
+        return {
+            date.strftime("%b %d"): int(value)
+            for date, value in df["Value"].to_dict().items()
+        }
+
+    def rating_history_50_players_30_days_to_csv(self):
+        players = self.lichess.get_one_leaderboard(nb=2, perfType="classical")["users"]
+
+        data = []
+        for player in players:
+            data.append(
+                {
+                    player["username"]: self.rating_history_chess_player(
+                        player["username"]
+                    )
+                }
+            )
+
+        # Extract the first user's dates (since they are the same and in order)
+        dates = list(data[0]["igormezentsev"].keys())
+
+        # Prepare the data for CSV
+        csv_data = []
+
+        for entry in data:
+            for username, values in entry.items():
+                row = [username]  # Start the row with the username
+                row.extend(
+                    [values[date] for date in dates]
+                )  # Add the values in date order
+                csv_data.append(row)
+
+        # Define the CSV file path
+        csv_file_path = "rating_history_50_players_30_days.csv"
+
+        # Write to CSV
+        with open(csv_file_path, mode="w", newline="") as file:
+            writer = csv.writer(file)
+            # Write the header: "Username" followed by the dates
+            writer.writerow(["Username"] + dates)
+            # Write the rows: username followed by values for each date
+            writer.writerows(csv_data)
 
 
 if __name__ == "__main__":
@@ -73,4 +135,15 @@ if __name__ == "__main__":
 
     print(assignment.list_50_top_classical_chess_players_usernames())
 
-    print(json_dumps(assignment.rating_history_top_chess_player(), indent=4))
+    player = assignment.lichess.get_one_leaderboard(nb=1, perfType="classical")[
+        "users"
+    ][0]
+
+    print(
+        json_dumps(
+            assignment.rating_history_chess_player(username=player["username"]),
+            indent=4,
+        )
+    )
+
+    assignment.rating_history_50_players_30_days_to_csv()
