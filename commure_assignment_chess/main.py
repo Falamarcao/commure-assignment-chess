@@ -49,7 +49,7 @@ class Assignment:
 
         return usernames
 
-    def rating_history_chess_player(self, username: str):
+    def rating_history_chess_player(self, username: str, complete_date: bool = False):
         rating_history = self.lichess.get_rating_history_of_a_user(
             username=player["username"]
         )
@@ -58,20 +58,24 @@ class Assignment:
         for game in rating_history:
             if game["name"] == "Classical":
                 for record in reversed(game["points"]):
-                    if self.is_within_last_30_days(
-                        datetime(record[0], record[1] + 1, record[2])
-                    ):
-                        data.update(
-                            {f"{self.months[record[1]]} {record[2]}": record[3]}
-                        )
+                    date = datetime(record[0], record[1] + 1, record[2])
+                    if self.is_within_last_30_days(date):
+                        if complete_date:
+                            data.update({date.strftime("%Y-%m-%d"): record[3]})
+                        else:
+                            data.update(
+                                {f"{self.months[record[1]]} {record[2]}": record[3]}
+                            )
                     else:
                         break
+
+        date_format = "%Y-%m-%d" if complete_date else "%b %d"
 
         # Convert the dictionary to a DataFrame
         df = pd.DataFrame(list(data.items()), columns=["Date", "Value"])
 
         # Convert 'Date' to datetime format
-        df["Date"] = pd.to_datetime(df["Date"], format="%b %d")
+        df["Date"] = pd.to_datetime(df["Date"], format=date_format)
 
         # Set the 'Date' as index
         df.set_index("Date", inplace=True)
@@ -87,7 +91,7 @@ class Assignment:
 
         # Convert the index (Timestamps) back to strings for dict compatibility
         return {
-            date.strftime("%b %d"): int(value)
+            date.strftime(date_format): int(value)
             for date, value in df["Value"].to_dict().items()
         }
 
@@ -99,7 +103,7 @@ class Assignment:
             data.append(
                 {
                     player["username"]: self.rating_history_chess_player(
-                        player["username"]
+                        player["username"], complete_date=True
                     )
                 }
             )
