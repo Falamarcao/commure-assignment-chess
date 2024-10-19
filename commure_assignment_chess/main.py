@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
-from typing import List, Union
+
+import asyncio
 import csv
 from datetime import datetime, timedelta
 from json import dumps as json_dumps
+from typing import List, Union
 
 import polars as pl  # Import Polars
 
@@ -22,22 +24,24 @@ class Assignment:
         # Check if the check_date is between cutoff_date and today
         return cutoff_date <= check_date <= self.today
 
-    def list_n_top_classical_chess_players_usernames(self, n: int) -> List[str]:
+    async def list_n_top_classical_chess_players_usernames(self, n: int) -> List[str]:
         # List the top n classical chess players and return their usernames
         usernames = [
             user["username"]
-            for user in self.lichess.get_one_leaderboard(nb=n, perfType="classical")[
-                "users"
-            ]
+            for user in (
+                await self.lichess.get_one_leaderboard(nb=n, perfType="classical")
+            )["users"]
         ]
         return usernames
 
-    def rating_history_chess_player(
+    async def rating_history_chess_player(
         self, username: str, complete_date: bool = False, returnDataFrame: bool = False
     ) -> Union[dict, pl.DataFrame]:
 
         date_format = "%Y-%m-%d" if complete_date else "%b %d"
-        rating_history = self.lichess.get_rating_history_of_a_user(username=username)
+        rating_history = await self.lichess.get_rating_history_of_a_user(
+            username=username
+        )
 
         # Use a list comprehension to create data
         data = [
@@ -85,46 +89,63 @@ class Assignment:
             df.columns = headers
             return df.with_columns(pl.lit(username).alias("username")).select(
                 ["username"] + df.columns
-            ) # add username column as first column
+            )  # add username column as first column
         else:
             df = df.transpose()
             return {k: v for k, v in df.iter_columns()}
 
-    def rating_history_n_players_30_days_to_csv(self, number_of_players: int) -> None:
-        players = self.lichess.get_one_leaderboard(
-            nb=number_of_players, perfType="classical"
+    async def rating_history_n_players_30_days_to_csv(
+        self, number_of_players: int
+    ) -> None:
+        players = (
+            await self.lichess.get_one_leaderboard(
+                nb=number_of_players, perfType="classical"
+            )
         )["users"]
 
-        player_dfs = [
+        tasks = [
             self.rating_history_chess_player(
                 username=player["username"], complete_date=True, returnDataFrame=True
             )
             for player in players
         ]
 
+        player_dfs = await asyncio.gather(*tasks)
+
         df = pl.concat(player_dfs)
 
         print(df.head())
 
         # Write to CSV
-        df.write_csv(f"rating_history_{number_of_players}_players_30_days.csv")
+        csv_path = f"./rating_history_{number_of_players}_players_30_days.csv"
+        df.write_csv(csv_path)
+        print(f"\nCSV file written: {csv_path}", "\n")
 
 
-if __name__ == "__main__":
+async def main():
     assignment = Assignment()
 
-    print(assignment.list_n_top_classical_chess_players_usernames(n=50))
+    assignment.MAX_CONCURRENT_REQUESTS = (
+        10  # Note: modify here if you are getting a response 429 Too Many Requests
+    )
+    assignment.REQUEST_INTERVAL = 5
 
-    player = assignment.lichess.get_one_leaderboard(nb=1, perfType="classical")[
+    print(await assignment.list_n_top_classical_chess_players_usernames(n=50))
+
+    player = (await assignment.lichess.get_one_leaderboard(nb=1, perfType="classical"))[
         "users"
     ][0]
 
     print(
         f'- {player["username"]}, ',
         json_dumps(
-            assignment.rating_history_chess_player(username=player["username"]),
+            await assignment.rating_history_chess_player(username=player["username"]),
             indent=4,
         ),
     )
 
-    assignment.rating_history_n_players_30_days_to_csv(number_of_players=50)
+    await assignment.rating_history_n_players_30_days_to_csv(number_of_players=50)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
