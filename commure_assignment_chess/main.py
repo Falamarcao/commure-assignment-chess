@@ -13,7 +13,6 @@ class Assignment:
 
     def __init__(self):
         self.today = datetime.today()
-        self.date_list = [self.today.year, self.today.month, self.today.day]
 
         self.months = {
             0: "Jan",
