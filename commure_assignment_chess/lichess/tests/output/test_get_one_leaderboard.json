@@ -1,0 +1,26 @@
+{
+    "users": [
+        {
+            "id": "igormezentsev",
+            "username": "igormezentsev",
+            "perfs": {
+                "classical": {
+                    "rating": 2589,
+                    "progress": 8
+                }
+            },
+            "title": "FM",
+            "online": true
+        },
+        {
+            "id": "pit_0_corto",
+            "username": "Pit_0_corto",
+            "perfs": {
+                "classical": {
+                    "rating": 2486,
+                    "progress": 48
+                }
+            }
+        }
+    ]
+}
